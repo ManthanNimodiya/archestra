@@ -2,7 +2,7 @@
 
 import mermaid from "mermaid";
 import { useTheme } from "next-themes";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 
 interface MermaidDiagramProps {
   chart: string;
@@ -16,9 +16,11 @@ export function MermaidDiagram({
   const ref = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
   const [isLoaded, setIsLoaded] = useState(false);
+  const [renderError, setRenderError] = useState(false);
 
   useEffect(() => {
     setIsLoaded(false);
+    setRenderError(false);
     const isDark = theme === "dark";
 
     mermaid.initialize({
@@ -54,9 +56,8 @@ export function MermaidDiagram({
     const renderDiagram = async () => {
       if (ref.current) {
         ref.current.replaceChildren();
+        const uniqueId = `${id}-${Date.now()}`;
         try {
-          // Generate a unique ID to avoid conflicts
-          const uniqueId = `${id}-${Date.now()}`;
           const { svg } = await mermaid.render(uniqueId, chart);
           if (ref.current) {
             // Parse SVG string via DOMParser to avoid innerHTML
@@ -67,11 +68,12 @@ export function MermaidDiagram({
           }
         } catch (error) {
           console.error("Error rendering mermaid diagram:", error);
-          if (ref.current) {
-            const pre = document.createElement("pre");
-            pre.textContent = chart;
-            ref.current.replaceChildren(pre);
-            setIsLoaded(true);
+          setRenderError(true);
+          setIsLoaded(true);
+        } finally {
+          const orphan = document.getElementById(`d${uniqueId}`);
+          if (orphan) {
+            orphan.remove();
           }
         }
       }
@@ -81,11 +83,18 @@ export function MermaidDiagram({
   }, [chart, id, theme]);
 
   return (
-    <div
-      ref={ref}
-      className={`flex justify-center w-full [&_svg]:!max-w-full [&_svg]:!h-auto transition-opacity duration-300 motion-reduce:transition-none ${
-        isLoaded ? "opacity-100" : "opacity-0"
-      }`}
-    />
+    <Fragment>
+      {renderError && (
+        <pre className="text-sm whitespace-pre-wrap break-words font-mono">
+          {chart}
+        </pre>
+      )}
+      <div
+        ref={ref}
+        className={`flex justify-center w-full [&_svg]:!max-w-full [&_svg]:!h-auto transition-opacity duration-300 motion-reduce:transition-none ${
+          isLoaded && !renderError ? "opacity-100" : "opacity-0"
+        }`}
+      />
+    </Fragment>
   );
 }

@@ -4,6 +4,7 @@ import DOMPurify from "dompurify";
 import { Copy, Download, FileText, GripVertical, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Components } from "react-markdown";
+import { ErrorBoundary } from "react-error-boundary";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
@@ -96,7 +97,16 @@ export function ConversationArtifactPanel({
         const code = String(children).replace(/\n$/, "");
         return (
           <div className="my-4 max-h-[600px] [&_svg]:!max-h-[600px] [&_svg]:!w-auto">
-            <MermaidDiagram chart={code} id={`mermaid-${Date.now()}`} />
+            <ErrorBoundary
+              resetKeys={[code]}
+              fallback={
+                <pre className="text-sm whitespace-pre-wrap break-words font-mono">
+                  {code}
+                </pre>
+              }
+            >
+              <MermaidDiagram chart={code} id={`mermaid-${Date.now()}`} />
+            </ErrorBoundary>
           </div>
         );
       }
